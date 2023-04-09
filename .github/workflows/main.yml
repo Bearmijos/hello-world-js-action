@@ -1,0 +1,55 @@
+name: "CodeQL action"
+on:
+  push
+env:
+  CODEQL_ACTION_TESTING_ENVIRONMENT: codeql-action-pr-checks
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript]
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v2
+      id: init
+      with:
+        languages: javascript
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v2
+
+    # confirm steps.init.outputs.codeql-path points to the codeql binary
+    - name: Print CodeQL Version
+      run: ${{steps.init.outputs.codeql-path}} version --format=json
+      
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2
+      with:
+        output: ${{ runner.temp }}/codeql
+    
+    - name: Echos
+      run: |
+        echo ${{ runner.temp }}
+        find /home/runner/work/_temp
+        
+    - name: Find CodeQL
+      run: |
+       ${{steps.init.outputs.codeql-path}} database interpret-results --format=csv --output=results.csv --print-diagnostics-summary --print-metrics-summary /home/runner/work/_temp/codeql_databases/javascript 
+
+    - name: CodeQL Scan as artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: javascript-sarif
+        path: ${{ runner.temp }}/codeql/javascript.sarif
+        
+    - name: CodeQL Scan as artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: javascript-csv
+        path: results.csv
+    
